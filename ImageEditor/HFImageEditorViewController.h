@@ -17,7 +17,7 @@ typedef void(^HFImageEditorDoneCallback)(UIImage *image, BOOL canceled);
 @property(nonatomic,assign) CGSize cropSize;
 @property(nonatomic,assign) CGRect cropRect;
 @property(nonatomic,assign) CGFloat outputWidth;
-@property(nonatomic,assign) CGFloat minimumScale;
+@property(nonatomic,assign) CGFloat minimumScale; // With our fork additions, this property is irrelevant. User can make things as small as they want up to the limit of incurring whitespace around the image.
 @property(nonatomic,assign) CGFloat maximumScale;
 
 @property(nonatomic,assign) BOOL panEnabled;

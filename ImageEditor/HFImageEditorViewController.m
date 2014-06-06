@@ -384,33 +384,23 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
             self.gestureCount--;
             handle = NO;
             if(self.gestureCount == 0) {
-                CGFloat scale = [self boundedScale:self.scale];
-                if(scale != self.scale) {
-                    CGFloat deltaX = self.scaleCenter.x-self.imageView.bounds.size.width/2.0;
-                    CGFloat deltaY = self.scaleCenter.y-self.imageView.bounds.size.height/2.0;
-                    
-                    CGAffineTransform transform =  CGAffineTransformTranslate(self.imageView.transform, deltaX, deltaY);
-                    transform = CGAffineTransformScale(transform, scale/self.scale , scale/self.scale);
-                    transform = CGAffineTransformTranslate(transform, -deltaX, -deltaY);
-                    [self checkBoundsWithTransform:transform];
-                    self.view.userInteractionEnabled = NO;
-                    [UIView animateWithDuration:kAnimationIntervalTransform delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-                        self.imageView.transform = self.validTransform;
-                    } completion:^(BOOL finished) {
-                        self.view.userInteractionEnabled = YES;
-                        self.scale = scale;
-                    }];
-                    
-                } else {
-                    self.view.userInteractionEnabled = NO;
-                    [UIView animateWithDuration:kAnimationIntervalTransform delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-                        self.imageView.transform = self.validTransform;
-                    } completion:^(BOOL finished) {
-                        self.view.userInteractionEnabled = YES;
-                    }];
+                [self checkBoundsWithTransform:self.imageView.transform];
 
+                CGFloat scale = [self boundedScale:self.scale];
+                CGFloat deltaX = self.scaleCenter.x-self.imageView.bounds.size.width/2.0;
+                CGFloat deltaY = self.scaleCenter.y-self.imageView.bounds.size.height/2.0;
+
+                CGAffineTransform transform =  CGAffineTransformTranslate(self.imageView.transform, deltaX, deltaY);
+                transform = CGAffineTransformScale(transform, scale/self.scale , scale/self.scale);
+                transform = CGAffineTransformTranslate(transform, -deltaX, -deltaY);
+                [self checkBoundsWithTransform:transform];
+                self.view.userInteractionEnabled = NO;
+                [UIView animateWithDuration:kAnimationIntervalTransform delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                     self.imageView.transform = self.validTransform;
-                }
+                } completion:^(BOOL finished) {
+                    self.view.userInteractionEnabled = YES;
+                    self.scale = scale;
+                }];
             }
         } break;
         default:
@@ -427,20 +417,97 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
         return;
     }
     CGRect r1 = [self boundingBoxForRect:self.cropRect rotatedByRadians:[self imageRotation]];
-    Rectangle r2 = [self applyTransform:transform toRect:self.initialImageFrame];
-    
+    Rectangle transformedImageFrameRectangle = [self applyTransform:transform toRect:self.initialImageFrame];
+
     CGAffineTransform t = CGAffineTransformMakeTranslation(CGRectGetMidX(self.cropRect), CGRectGetMidY(self.cropRect));
     t = CGAffineTransformRotate(t, -[self imageRotation]);
     t = CGAffineTransformTranslate(t, -CGRectGetMidX(self.cropRect), -CGRectGetMidY(self.cropRect));
-    
-    Rectangle r3 = [self applyTransform:t toRectangle:r2];
-    
+
+    Rectangle r3 = [self applyTransform:t toRectangle:transformedImageFrameRectangle];
+
     if(CGRectContainsRect([self CGRectFromRectangle:r3],r1)) {
+        self.validTransform = transform;
+    } else {
+        // Invert transform to get the "original" bounds
+        CGAffineTransform inverse = CGAffineTransformInvert(transform);
+        CGRect initialBounds = [self CGRectFromRectangle:[self applyRealTransform:inverse toRect:self.imageView.bounds]];
+
+        // Find nearest viable transform
+        // First, make sure image is not too small
+        CGRect transformedImageRect = [self CGRectFromRectangle:transformedImageFrameRectangle];
+        CGFloat transformedImageWidth = transformedImageRect.size.width;
+        CGFloat transformedImageHeight = transformedImageRect.size.height;
+
+        CGFloat widthRatio = transformedImageWidth / self.cropRect.size.width;
+        CGFloat heightRatio = transformedImageHeight / self.cropRect.size.height;
+
+        CGFloat scalingRatio = MIN(widthRatio, heightRatio);
+
+        if (scalingRatio < 1.0f) {
+            // Need to scale image by (scalingRatio ^ -1)
+            CGFloat deltaX = self.scaleCenter.x-self.imageView.bounds.size.width/2.0;
+            CGFloat deltaY = self.scaleCenter.y-self.imageView.bounds.size.height/2.0;
+
+            transform =  CGAffineTransformTranslate(transform, deltaX, deltaY);
+            transform = CGAffineTransformScale(transform, 1 / scalingRatio, 1 / scalingRatio);
+            transform = CGAffineTransformTranslate(transform, -deltaX, -deltaY);
+
+            CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
+            self.scale = xScaling;
+
+            CGAffineTransform cachedTransform = self.imageView.transform;
+            self.imageView.transform = transform;
+
+
+            // THIS WORKS
+//            // Need to scale image by (scalingRatio ^ -1)
+//            CGFloat deltaX = transformedImageRect.origin.x;// + transformedImageWidth / 2.0f;
+//            CGFloat deltaY = transformedImageRect.origin.y;// + transformedImageHeight / 2.0f;
+//            deltaX = -deltaX;
+//            deltaY = -deltaY;
+//
+//            //            CGAffineTransform transform =  CGAffineTransformTranslate(self.imageView.transform, deltaX, deltaY);
+//            //        CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
+//            //        CGFloat yScaling = sqrt(transform.b * transform.b + transform.d * transform.d);
+//            //            NSLog(@"%f", xScaling);
+//            //            NSLog(@"%f", yScaling);
+//            transform = CGAffineTransformTranslate(transform, deltaX, deltaY);
+//            transform = CGAffineTransformScale(transform, 1 / scalingRatio, 1 / scalingRatio);
+//            transform = CGAffineTransformTranslate(transform, -deltaX * (1 / scalingRatio), -deltaY * (1 / scalingRatio));
+//            
+//            NSLog(@"ratio %f", scalingRatio);
+        }
+
+        CGRect cropRect = self.cropRect;
+        CGFloat translationX = 0.0f;
+        CGFloat translationY = 0.0f;
+
+        CGFloat diff = cropRect.origin.y - transformedImageRect.origin.y;
+        if (diff < 0.0f)
+            translationY += diff;
+
+        diff = ((cropRect.origin.x + cropRect.size.width) -
+                (transformedImageRect.origin.x + transformedImageRect.size.width));
+        if (diff > 0.0f)
+            translationX += diff;
+
+        diff = ((cropRect.origin.y + cropRect.size.height) -
+                (transformedImageRect.origin.y + transformedImageRect.size.height));
+        if (diff > 0.0f)
+            translationY += diff;
+
+        diff = cropRect.origin.x - transformedImageRect.origin.x;
+        if (diff < 0.0f)
+            translationX += diff;
+
+        // Make translation
+        CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
+        CGFloat yScaling = sqrt(transform.b * transform.b + transform.d * transform.d);
+        transform = CGAffineTransformTranslate(self.imageView.transform, translationX / xScaling, translationY / yScaling);
+
         self.validTransform = transform;
     }
 }
-
-
 
 - (IBAction)handlePan:(UIPanGestureRecognizer*)recognizer
 {
@@ -448,7 +515,6 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
         CGPoint translation = [recognizer translationInView:self.imageView];
         CGAffineTransform transform = CGAffineTransformTranslate( self.imageView.transform, translation.x, translation.y);
         self.imageView.transform = transform;
-        [self checkBoundsWithTransform:transform];
 
         [recognizer setTranslation:CGPointMake(0, 0) inView:self.frameView];
     }
@@ -490,8 +556,6 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
         self.imageView.transform = transform;
 
         recognizer.scale = 1;
-        
-        [self checkBoundsWithTransform:transform];
     }
 }
 
@@ -705,6 +769,12 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
         .br = CGPointApplyAffineTransform(r.br, t),
         .bl = CGPointApplyAffineTransform(r.bl, t)
     };
+}
+
+- (Rectangle)applyRealTransform:(CGAffineTransform)transform toRect:(CGRect)rect
+{
+    return [self applyTransform:transform
+                    toRectangle:[self RectangleFromCGRect:rect]];
 }
 
 - (Rectangle)applyTransform:(CGAffineTransform)t toRectangle:(Rectangle)r
