@@ -427,10 +427,6 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
     if(CGRectContainsRect([self CGRectFromRectangle:r3],r1)) {
         self.validTransform = transform;
     } else {
-        // Invert transform to get the "original" bounds
-        CGAffineTransform inverse = CGAffineTransformInvert(transform);
-        CGRect initialBounds = [self CGRectFromRectangle:[self applyRealTransform:inverse toRect:self.imageView.bounds]];
-
         // Find nearest viable transform
         // First, make sure image is not too small
         CGRect transformedImageRect = [self CGRectFromRectangle:transformedImageFrameRectangle];
@@ -454,27 +450,7 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
             CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
             self.scale = xScaling;
 
-            CGAffineTransform cachedTransform = self.imageView.transform;
             self.imageView.transform = transform;
-
-
-            // THIS WORKS
-//            // Need to scale image by (scalingRatio ^ -1)
-//            CGFloat deltaX = transformedImageRect.origin.x;// + transformedImageWidth / 2.0f;
-//            CGFloat deltaY = transformedImageRect.origin.y;// + transformedImageHeight / 2.0f;
-//            deltaX = -deltaX;
-//            deltaY = -deltaY;
-//
-//            //            CGAffineTransform transform =  CGAffineTransformTranslate(self.imageView.transform, deltaX, deltaY);
-//            //        CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
-//            //        CGFloat yScaling = sqrt(transform.b * transform.b + transform.d * transform.d);
-//            //            NSLog(@"%f", xScaling);
-//            //            NSLog(@"%f", yScaling);
-//            transform = CGAffineTransformTranslate(transform, deltaX, deltaY);
-//            transform = CGAffineTransformScale(transform, 1 / scalingRatio, 1 / scalingRatio);
-//            transform = CGAffineTransformTranslate(transform, -deltaX * (1 / scalingRatio), -deltaY * (1 / scalingRatio));
-//            
-//            NSLog(@"ratio %f", scalingRatio);
         }
 
         CGRect cropRect = self.cropRect;
@@ -502,7 +478,7 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
         // Make translation
         CGFloat xScaling = sqrt(transform.a * transform.a + transform.c * transform.c);
         CGFloat yScaling = sqrt(transform.b * transform.b + transform.d * transform.d);
-        transform = CGAffineTransformTranslate(self.imageView.transform, translationX / xScaling, translationY / yScaling);
+        transform = CGAffineTransformTranslate(transform, translationX / xScaling, translationY / yScaling);
 
         self.validTransform = transform;
     }
