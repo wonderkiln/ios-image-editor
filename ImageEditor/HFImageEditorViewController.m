@@ -383,6 +383,7 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
             self.gestureCount--;
             handle = NO;
             if(self.gestureCount == 0) {
+                CGAffineTransform cachedTransform = self.imageView.transform;
                 [self checkBoundsWithTransform:self.imageView.transform];
 
                 CGFloat scale = [self boundedScale:self.scale];
@@ -394,6 +395,7 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
                 transform = CGAffineTransformTranslate(transform, -deltaX, -deltaY);
                 [self checkBoundsWithTransform:transform];
                 self.view.userInteractionEnabled = NO;
+                self.imageView.transform = cachedTransform;
                 [UIView animateWithDuration:kAnimationIntervalTransform delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                     self.imageView.transform = self.validTransform;
                 } completion:^(BOOL finished) {
