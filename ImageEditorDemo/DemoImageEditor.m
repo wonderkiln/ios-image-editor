@@ -44,7 +44,9 @@
 
 - (IBAction)setLPortraitAction:(id)sender
 {
-    self.cropRect = CGRectMake((self.frameView.frame.size.width-240)/2.0f, (self.frameView.frame.size.height-320)/2.0f, 240, 320);
+//    self.cropRect = CGRectMake((self.frameView.frame.size.width-240)/2.0f, (self.frameView.frame.size.height-320)/2.0f, 240, 320);
+    CGRect temp = CGRectMake(0, 0, self.frameView.frame.size.width, self.frameView.frame.size.width * 1.775);//self.frameView.frame.size.height);
+    self.cropRect = temp;
     [self reset:YES];
 }
 
