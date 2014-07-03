@@ -434,10 +434,20 @@ static const NSTimeInterval kAnimationIntervalTransform = 0.2;
     t = CGAffineTransformTranslate(t, -CGRectGetMidX(self.cropRect), -CGRectGetMidY(self.cropRect));
     
     Rectangle r3 = [self applyTransform:t toRectangle:r2];
+    CGRect cropRect = r1;
+    CGRect imageRect = [self CGRectFromRectangle:r3];
     
-    if(CGRectContainsRect([self CGRectFromRectangle:r3],r1)) {
-        self.validTransform = transform;
+    if (CGRectGetMinX(imageRect) > CGRectGetMinX(cropRect) ||
+        CGRectGetMaxX(imageRect) < CGRectGetMaxX(cropRect)) {
+        transform.tx = self.validTransform.tx;
     }
+    
+    if (CGRectGetMinY(imageRect) > CGRectGetMinY(cropRect) ||
+        CGRectGetMaxY(imageRect) < CGRectGetMaxY(cropRect)) {
+        transform.ty = self.validTransform.ty;
+    }
+    
+    self.validTransform = transform;
 }
 
 
